@@ -289,6 +289,7 @@ function applyState(state, svgOverride) {
       autoReturnTimer = null;
       if (miniMode) {
         if (mouseOverPet) {
+          miniPeekIn();
           applyState("mini-peek");
         } else {
           applyState("mini-idle");
@@ -762,7 +763,7 @@ function createWindow() {
     const wa = getNearestWorkArea(prefs.x + size.width / 2, prefs.y + size.height / 2);
     currentMiniX = wa.x + wa.width - Math.round(size.width * (1 - MINI_OFFSET_RATIO));
     startX = currentMiniX;
-    startY = prefs.y;
+    startY = Math.max(wa.y, Math.min(prefs.y, wa.y + wa.height - size.height));
     miniMode = true;
   } else if (prefs) {
     const clamped = clampToScreen(prefs.x, prefs.y, size.width, size.height);
@@ -890,7 +891,8 @@ function createWindow() {
       const { y, width, height } = win.getBounds();
       const wa = getNearestWorkArea(currentMiniX + width / 2, y + height / 2);
       currentMiniX = wa.x + wa.width - Math.round(width * (1 - MINI_OFFSET_RATIO));
-      win.setBounds({ x: currentMiniX, y, width, height });
+      const clampedY = Math.max(wa.y, Math.min(y, wa.y + wa.height - height));
+      win.setBounds({ x: currentMiniX, y: clampedY, width, height });
       return;
     }
     const { x, y, width, height } = win.getBounds();
@@ -1018,7 +1020,9 @@ function checkMiniModeSnap() {
   const displays = screen.getAllDisplays();
   for (const d of displays) {
     const wa = d.workArea;
+    const centerY = bounds.y + size.height / 2;
     if (centerX < wa.x || centerX > wa.x + wa.width) continue;
+    if (centerY < wa.y || centerY > wa.y + wa.height) continue;
     const rightLimit = wa.x + wa.width - size.width + mRight;
     if (bounds.x >= rightLimit - SNAP_TOLERANCE) {
       enterMiniMode(wa);
