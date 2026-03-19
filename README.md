@@ -16,8 +16,9 @@ A desktop pet that reacts to your [Claude Code](https://docs.anthropic.com/en/do
 - **12 animated states** — idle, thinking, typing, building, juggling, conducting, error, happy, notification, sweeping, carrying, sleeping
 - **Eye tracking** — Clawd follows your cursor in idle state, with body lean and shadow stretch
 - **Sleep sequence** — yawning, dozing, collapsing, sleeping after 60s idle; mouse movement wakes Clawd
+- **Click-through** — transparent areas pass clicks to windows below; only Clawd's body is interactive
 - **Click reactions** — double-click for a poke, 4 clicks for a flail
-- **Drag from any state** — grab Clawd anytime, release to resume the current animation
+- **Drag from any state** — grab Clawd anytime (Pointer Capture prevents fast-flick drops), release to resume
 - **Multi-session tracking** — multiple Claude Code sessions resolve to the highest-priority state
 - **Subagent awareness** — juggling for 1 subagent, conducting for 2+
 - **Position memory** — Clawd remembers where you left it across restarts
@@ -68,7 +69,7 @@ Claude Code triggers hook event
   → IPC to renderer.js (SVG preload + crossfade swap)
 ```
 
-Clawd runs as a transparent, always-on-top, unfocusable Electron window. It never steals focus or blocks your workflow.
+Clawd runs as a transparent, always-on-top, unfocusable Electron window with per-region click-through. It never steals focus or blocks your workflow — clicks on transparent areas pass straight through to the window below.
 
 ## Manual Testing
 
