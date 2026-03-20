@@ -80,7 +80,7 @@ const STATE_SVGS = {
   idle: [SVG_IDLE_FOLLOW],
   yawning: ["clawd-idle-yawn.svg"],
   dozing: ["clawd-idle-doze.svg"],
-  collapsing: ["clawd-idle-collapse.svg"],
+  collapsing: ["clawd-collapse-sleep.svg"],
   thinking: ["clawd-working-thinking.svg"],
   working: ["clawd-working-typing.svg"],
   juggling: ["clawd-working-juggling.svg"],
@@ -126,7 +126,7 @@ const AUTO_RETURN_MS = {
 const MOUSE_IDLE_TIMEOUT = 20000;   // 20s → idle-look
 const MOUSE_SLEEP_TIMEOUT = 60000;  // 60s → yawning → dozing
 const DEEP_SLEEP_TIMEOUT = 600000;  // 10min → collapsing → sleeping
-const YAWN_DURATION = 3800;
+const YAWN_DURATION = 3000;
 const COLLAPSE_DURATION = 800;
 const IDLE_LOOK_DURATION = 10000;  // idle-look CSS loop is 10s
 const SLEEP_SEQUENCE = new Set(["yawning", "dozing", "collapsing", "sleeping"]);
@@ -307,7 +307,7 @@ function applyState(state, svgOverride) {
   currentSvg = svg;
 
   // Update hit box based on SVG
-  if (svg === "clawd-sleeping.svg") {
+  if (svg === "clawd-sleeping.svg" || svg === "clawd-collapse-sleep.svg") {
     currentHitBox = HIT_BOXES.sleeping;
   } else if (WIDE_SVGS.has(svg)) {
     currentHitBox = HIT_BOXES.wide;
@@ -322,8 +322,8 @@ function applyState(state, svgOverride) {
     sendToRenderer("eye-move", 0, 0);
   }
 
-  // Wake poll: dozing and sleeping (not DND sleeping)
-  if ((state === "dozing" || state === "sleeping") && !doNotDisturb) {
+  // Wake poll: dozing, collapsing, sleeping (not DND sleeping)
+  if ((state === "dozing" || state === "collapsing" || state === "sleeping") && !doNotDisturb) {
     setTimeout(() => {
       if (currentState === state) startWakePoll();
     }, 500);
@@ -336,13 +336,8 @@ function applyState(state, svgOverride) {
   if (state === "yawning") {
     autoReturnTimer = setTimeout(() => {
       autoReturnTimer = null;
-      applyState("dozing");
+      applyState(doNotDisturb ? "collapsing" : "dozing");
     }, YAWN_DURATION);
-  } else if (state === "collapsing") {
-    autoReturnTimer = setTimeout(() => {
-      autoReturnTimer = null;
-      applyState("sleeping");
-    }, COLLAPSE_DURATION);
   } else if (AUTO_RETURN_MS[state]) {
     autoReturnTimer = setTimeout(() => {
       autoReturnTimer = null;
@@ -565,8 +560,8 @@ function stopWakePoll() {
 }
 
 function wakeFromDoze() {
-  if (currentState === "sleeping") {
-    // Direct wake from sleep (collapsed pose → idle, no smooth transition yet)
+  if (currentState === "sleeping" || currentState === "collapsing") {
+    // Direct wake from sleep/collapse (→ idle, no smooth transition yet)
     applyState("idle");
     return;
   }
@@ -700,7 +695,7 @@ function enableDoNotDisturb() {
   if (miniMode) {
     applyState("mini-idle");
   } else {
-    applyState("sleeping");
+    applyState("yawning");  // walk through yawning → collapsing → sleeping
   }
   buildContextMenu();
   buildTrayMenu();
