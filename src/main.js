@@ -333,7 +333,7 @@ function applyState(state, svgOverride) {
     stopWakePoll();
   }
 
-  // Sleep/doze sequence: yawning → dozing, collapsing → sleeping
+  // Sleep/doze sequence: yawning → dozing; waking → resolve session state
   if (autoReturnTimer) clearTimeout(autoReturnTimer);
   if (state === "yawning") {
     autoReturnTimer = setTimeout(() => {
@@ -343,7 +343,8 @@ function applyState(state, svgOverride) {
   } else if (state === "waking") {
     autoReturnTimer = setTimeout(() => {
       autoReturnTimer = null;
-      applyState("idle");
+      const resolved = resolveDisplayState();
+      applyState(resolved, getSvgOverride(resolved));
     }, WAKE_DURATION);
   } else if (AUTO_RETURN_MS[state]) {
     autoReturnTimer = setTimeout(() => {
