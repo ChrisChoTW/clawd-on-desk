@@ -100,6 +100,8 @@ STATE_SVGS["mini-happy"] = ["clawd-mini-happy.svg"];
 STATE_SVGS["mini-enter"] = ["clawd-mini-enter.svg"];
 STATE_SVGS["mini-peek"]  = ["clawd-mini-peek.svg"];
 STATE_SVGS["mini-crabwalk"] = ["clawd-mini-crabwalk.svg"];
+STATE_SVGS["mini-enter-sleep"] = ["clawd-mini-enter-sleep.svg"];
+STATE_SVGS["mini-sleep"] = ["clawd-mini-sleep.svg"];
 
 const MIN_DISPLAY_MS = {
   attention: 4000,
@@ -203,6 +205,7 @@ const CRABWALK_SPEED = 0.12;  // px/ms
 
 let miniMode = false;
 let miniTransitioning = false;
+let miniSleepPeeked = false;
 let preMiniX = 0, preMiniY = 0;
 let currentMiniX = 0;
 let miniSnap = null;  // { y, width, height } — canonical rect to prevent DPI drift
@@ -406,9 +409,16 @@ function startMainTick() {
 
     // ── Mini mode peek hover ──
     if (miniMode && !miniTransitioning && !dragLocked && !menuOpen) {
-      const canPeek = currentState === "mini-idle" || currentState === "mini-peek";
+      const canPeek = currentState === "mini-idle" || currentState === "mini-peek"
+        || currentState === "mini-sleep";
       if (!isAnimating && canPeek) {
-        if (mouseOverPet && currentState !== "mini-peek") {
+        if (mouseOverPet && currentState === "mini-sleep" && !miniSleepPeeked) {
+          miniPeekIn();
+          miniSleepPeeked = true;
+        } else if (!mouseOverPet && currentState === "mini-sleep" && miniSleepPeeked) {
+          miniPeekOut();
+          miniSleepPeeked = false;
+        } else if (mouseOverPet && currentState !== "mini-peek" && currentState !== "mini-sleep") {
           miniPeekIn();
           applyState("mini-peek");
         } else if (!mouseOverPet && currentState === "mini-peek") {
@@ -1202,6 +1212,9 @@ function enterMiniMode(wa, viaMenu) {
   buildContextMenu();
   buildTrayMenu();
 
+  const enterSvgState = doNotDisturb ? "mini-enter-sleep" : "mini-enter";
+  const idleSvgState = doNotDisturb ? "mini-sleep" : "mini-idle";
+
   if (viaMenu) {
     // Jump past ALL screens, load enter SVG off-screen, then slide to mini position
     const displays = screen.getAllDisplays();
@@ -1210,24 +1223,24 @@ function enterMiniMode(wa, viaMenu) {
     const jumpTarget = maxRight;
     animateWindowParabola(jumpTarget, bounds.y, JUMP_DURATION, () => {
       // Window is past all screens — load enter SVG here (invisible)
-      applyState("mini-enter");
+      applyState(enterSvgState);
       miniTransitionTimer = setTimeout(() => {
         // SVG is loaded, now move to mini position (enter animation already playing)
         miniSnap = { y: bounds.y, width: size.width, height: size.height };
         win.setBounds({ x: currentMiniX, y: miniSnap.y, width: miniSnap.width, height: miniSnap.height });
         miniTransitionTimer = setTimeout(() => {
           miniTransitioning = false;
-          applyState("mini-idle");
+          applyState(idleSvgState);
         }, 3200);
       }, 300);
     });
   } else {
     // Drag entry: fast slide + immediate enter animation (no idle hiccup)
     animateWindowX(currentMiniX, 100);
-    applyState("mini-enter");
+    applyState(enterSvgState);
     miniTransitionTimer = setTimeout(() => {
       miniTransitioning = false;
-      applyState("mini-idle");
+      applyState(idleSvgState);
     }, 3200);
   }
 }
@@ -1237,6 +1250,7 @@ function exitMiniMode() {
   cancelMiniTransition();
   miniMode = false;
   miniSnap = null;
+  miniSleepPeeked = false;
   sendToRenderer("mini-mode-change", false);
   buildContextMenu();
   buildTrayMenu();
@@ -1256,7 +1270,11 @@ function exitMiniMode() {
   animateWindowParabola(clamped.x, clamped.y, JUMP_DURATION, () => {
     // Use applyState directly — bypass MIN_DISPLAY_MS so mini animations don't linger
     if (doNotDisturb) {
-      applyState("sleeping");
+      doNotDisturb = false;
+      sendToRenderer("dnd-change", false);
+      buildContextMenu();
+      buildTrayMenu();
+      applyState("waking");
     } else {
       const resolved = resolveDisplayState();
       applyState(resolved, getSvgOverride(resolved));
@@ -1301,7 +1319,7 @@ function buildContextMenu() {
     { type: "separator" },
     {
       label: miniMode ? t("exitMiniMode") : t("miniMode"),
-      enabled: !miniTransitioning,
+      enabled: !miniTransitioning && !(doNotDisturb && !miniMode),
       click: () => miniMode ? exitMiniMode() : enterMiniViaMenu(),
     },
     { type: "separator" },
