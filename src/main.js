@@ -1161,7 +1161,10 @@ function createWindow() {
     win.setAlwaysOnTop(true, WIN_TOPMOST_LEVEL);
   }
   win.loadFile(path.join(__dirname, "index.html"));
-  win.showInactive();
+  // Multi-session mode: primary window is a hidden daemon (server + tray only).
+  // Per-session windows handle all visual display.
+  win.hide();
+  if (hitWin && !hitWin.isDestroyed()) hitWin.hide();
   // Linux WMs may reset skipTaskbar after showInactive — re-apply explicitly
   if (isLinux) win.setSkipTaskbar(true);
   // macOS: apply after showInactive() — it resets NSWindowCollectionBehavior
@@ -1605,15 +1608,8 @@ if (!gotTheLock) {
   app.quit();
 } else {
   app.on("second-instance", () => {
-    if (win) {
-      win.showInactive();
-      if (isLinux) win.setSkipTaskbar(true);
-    }
-    if (hitWin && !hitWin.isDestroyed()) {
-      hitWin.showInactive();
-      if (isLinux) hitWin.setSkipTaskbar(true);
-    }
-    reapplyMacVisibility();
+    // Primary window stays hidden in multi-session mode.
+    // Session windows are managed by window-manager.
   });
 
   // macOS: hide dock icon early if user previously disabled it
