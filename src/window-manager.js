@@ -123,8 +123,8 @@ module.exports = function initWindowManager(ctx) {
 
   function updateSessionState(sessionId, state, event, agentId, cwd) {
     console.log(`Clawd WM: updateSessionState sid=${sessionId} state=${state} event=${event}`);
-    // Handle SessionEnd — destroy the window
-    if (event === "SessionEnd") {
+    // Handle SessionEnd or sleeping state — destroy the window
+    if (event === "SessionEnd" || state === "sleeping") {
       // Play sweeping animation before destroying
       const entry = sessionWindows.get(sessionId);
       if (entry && entry.win && !entry.win.isDestroyed()) {
