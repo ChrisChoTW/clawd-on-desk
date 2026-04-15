@@ -49,7 +49,8 @@ module.exports = function initWindowManager(ctx) {
       hasShadow: false,
       fullscreenable: false,
       enableLargerThanScreen: true,
-      // No "dock" type on Linux — session windows need to be draggable
+      // "toolbar" on Linux: hides from taskbar while keeping drag support
+      ...(isLinux ? { type: "toolbar" } : {}),
       ...(isMac ? { type: "panel", roundedCorners: false } : {}),
       webPreferences: {
         preload: path.join(__dirname, "preload-session.js"),
