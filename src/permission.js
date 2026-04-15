@@ -227,30 +227,50 @@ function repositionBubbles() {
   const margin = 8;
   const gap = 6;
   const bw = 340;
-  const petBounds = ctx.win.getBounds();
-  const cx = petBounds.x + petBounds.width / 2;
-  const cy = petBounds.y + petBounds.height / 2;
-  const wa = ctx.getNearestWorkArea(cx, cy);
-  const hitRect = ctx.bubbleFollowPet ? ctx.getHitRectScreen(petBounds) : null;
 
-  const bubbleHeights = pendingPermissions.map(perm =>
-    perm.measuredHeight || estimateBubbleHeight((perm.suggestions || []).length)
-  );
-
-  const bounds = computeBubbleStackLayout({
-    followPet: !!ctx.bubbleFollowPet,
-    bubbleHeights,
-    bubbleWidth: bw,
-    margin,
-    gap,
-    workArea: wa,
-    hitRect,
-  });
-
+  // Group permissions by sessionId so each bubble stacks near its session window
   for (let i = 0; i < pendingPermissions.length; i++) {
     const perm = pendingPermissions[i];
-    if (perm.bubble && !perm.bubble.isDestroyed() && bounds[i]) {
-      perm.bubble.setBounds(bounds[i]);
+    if (!perm.bubble || perm.bubble.isDestroyed()) continue;
+
+    // Find the right anchor window: session window if available, else primary
+    let anchorWin = ctx.win;
+    let isSessionWin = false;
+    if (perm.sessionId && ctx.windowManager) {
+      const sw = ctx.windowManager.getSessionWindow(perm.sessionId);
+      if (sw && sw.win && !sw.win.isDestroyed()) {
+        anchorWin = sw.win;
+        isSessionWin = true;
+      }
+    }
+
+    const petBounds = anchorWin.getBounds();
+    const cx = petBounds.x + petBounds.width / 2;
+    const cy = petBounds.y + petBounds.height / 2;
+    const wa = ctx.getNearestWorkArea(cx, cy);
+    // For session windows, use window bounds directly as hitRect
+    // For primary window, use the SVG-based hitRect calculation
+    let hitRect;
+    if (isSessionWin) {
+      hitRect = { left: petBounds.x, top: petBounds.y, right: petBounds.x + petBounds.width, bottom: petBounds.y + petBounds.height };
+    } else {
+      hitRect = ctx.bubbleFollowPet ? ctx.getHitRectScreen(petBounds) : null;
+    }
+
+    const bh = perm.measuredHeight || estimateBubbleHeight((perm.suggestions || []).length);
+
+    const bounds = computeBubbleStackLayout({
+      followPet: isSessionWin || !!ctx.bubbleFollowPet,
+      bubbleHeights: [bh],
+      bubbleWidth: bw,
+      margin,
+      gap,
+      workArea: wa,
+      hitRect,
+    });
+
+    if (bounds[0]) {
+      perm.bubble.setBounds(bounds[0]);
     }
   }
 }

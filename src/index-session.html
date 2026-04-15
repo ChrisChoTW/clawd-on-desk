@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' file:; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' file:; media-src 'self';">
+  <link rel="stylesheet" href="styles.css">
+  <title>Clawd Session</title>
+  <style>
+    #drag-overlay {
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      z-index: 999;
+      cursor: grab;
+    }
+    #drag-overlay.dragging { cursor: grabbing; }
+    #session-label {
+      position: absolute;
+      bottom: 2px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 1000;
+      pointer-events: none;
+      font-family: -apple-system, "Segoe UI", sans-serif;
+      font-size: 10px;
+      font-weight: 600;
+      color: #fff;
+      background: rgba(0, 0, 0, 0.65);
+      padding: 1px 6px;
+      border-radius: 4px;
+      white-space: nowrap;
+      max-width: 120px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div id="pet-container">
+    <object id="clawd" type="image/svg+xml"></object>
+    <div id="drag-overlay"></div>
+    <div id="session-label"></div>
+  </div>
+  <script src="renderer.js"></script>
+  <script src="session-drag.js"></script>
+  <script src="session-label.js"></script>
+</body>
+</html>

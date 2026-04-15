@@ -431,6 +431,7 @@ const _permCtx = {
   get doNotDisturb() { return doNotDisturb; },
   get hideBubbles() { return hideBubbles; },
   get petHidden() { return petHidden; },
+  get windowManager() { return _windowManager; },
   getNearestWorkArea,
   getHitRectScreen,
   guardAlwaysOnTop,
@@ -640,9 +641,20 @@ const _serverCtx = {
   showPermissionBubble,
   replyOpencodePermission,
   permLog,
+  get windowManager() { return _windowManager; },
 };
 const _server = require("./server")(_serverCtx);
 const { startHttpServer, getHookServerPort } = _server;
+
+// ── Per-session window manager ──
+const _wmCtx = {
+  getPrimaryBounds: () => win ? win.getBounds() : { x: 200, y: 200, width: 120, height: 120 },
+  getWindowSize: () => getCurrentPixelSize(),
+  getThemeRendererConfig: () => themeLoader.getRendererConfig(),
+  getStateSvgs: () => _state.STATE_SVGS,
+  isQuitting: () => isQuitting,
+};
+const _windowManager = require("./window-manager")(_wmCtx);
 
 // ── alwaysOnTop recovery (Windows DWM / Shell can strip TOPMOST flag) ──
 // The "always-on-top-changed" event only fires from Electron's own SetAlwaysOnTop
@@ -1253,6 +1265,16 @@ function createWindow() {
     if (bubbleFollowPet) repositionFloatingBubbles();
   });
 
+  // Per-session window drag — find the BrowserWindow that sent the event
+  ipcMain.on("session-move-window-by", (event, dx, dy) => {
+    const senderWin = BrowserWindow.fromWebContents(event.sender);
+    if (!senderWin || senderWin.isDestroyed()) return;
+    const { x, y, width, height } = senderWin.getBounds();
+    senderWin.setBounds({ x: x + dx, y: y + dy, width, height });
+    // Reposition permission bubbles to follow the session window
+    repositionBubbles();
+  });
+
   ipcMain.on("pause-cursor-polling", () => { idlePaused = true; });
   ipcMain.on("resume-from-reaction", () => {
     idlePaused = false;
@@ -1661,6 +1683,9 @@ if (!gotTheLock) {
 
     // Auto-updater: setup event handlers (user triggers check via tray menu)
     setupAutoUpdater();
+
+    // Start per-session window stale cleanup
+    _windowManager.startStaleCleanup();
   });
 
   app.on("before-quit", () => {
@@ -1679,6 +1704,7 @@ if (!gotTheLock) {
     stopTopmostWatchdog();
     if (hwndRecoveryTimer) { clearTimeout(hwndRecoveryTimer); hwndRecoveryTimer = null; }
     _focus.cleanup();
+    _windowManager.cleanup();
     if (hitWin && !hitWin.isDestroyed()) hitWin.destroy();
   });
 

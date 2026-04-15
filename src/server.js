@@ -240,6 +240,10 @@ function startHttpServer() {
               ctx.setState(state, safeSvg);
             } else {
               ctx.updateSession(sid, state, event, source_pid, cwd, editor, pidChain, agentPid, agentId, host, headless, display_svg);
+              // Route to per-session window (if window-manager is available)
+              if (ctx.windowManager && sid !== "default") {
+                ctx.windowManager.updateSessionState(sid, state, event, agentId, cwd);
+              }
             }
             res.writeHead(200, { [CLAWD_SERVER_HEADER]: CLAWD_SERVER_ID });
             res.end("ok");
