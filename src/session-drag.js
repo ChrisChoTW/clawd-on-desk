@@ -30,4 +30,12 @@
     dragging = false;
     overlay.classList.remove("dragging");
   });
+
+  // Right-click context menu
+  overlay.addEventListener("contextmenu", function (e) {
+    e.preventDefault();
+    if (window.electronAPI && window.electronAPI.showContextMenu) {
+      window.electronAPI.showContextMenu();
+    }
+  });
 })();

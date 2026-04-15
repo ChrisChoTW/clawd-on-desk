@@ -156,7 +156,8 @@ module.exports = function initWindowManager(ctx) {
     if (cwd) entry.cwd = cwd;
 
     // Send label (folder name from cwd, or short session id)
-    if (entry.win && !entry.win.isDestroyed() && (cwd || !entry.labelSent)) {
+    // Don't overwrite if user has set a custom label via rename
+    if (entry.win && !entry.win.isDestroyed() && !entry.customLabel && (cwd || !entry.labelSent)) {
       const label = cwd ? path.basename(cwd) : sessionId.slice(-8);
       entry.win.webContents.send("session-label", label);
       entry.labelSent = true;

@@ -1278,6 +1278,69 @@ function createWindow() {
     repositionBubbles();
   });
 
+  // Per-session window right-click context menu
+  ipcMain.on("session-context-menu", (event) => {
+    const senderWin = BrowserWindow.fromWebContents(event.sender);
+    if (!senderWin || senderWin.isDestroyed()) return;
+
+    // Find which session this window belongs to
+    let sessionId = null;
+    let sessionEntry = null;
+    for (const [sid, sw] of _windowManager.getAll()) {
+      if (sw.win === senderWin) {
+        sessionId = sid;
+        sessionEntry = sw;
+        break;
+      }
+    }
+
+    const menu = Menu.buildFromTemplate([
+      {
+        label: "Rename",
+        click: () => {
+          const renameWin = new BrowserWindow({
+            width: 280,
+            height: 130,
+            frame: false,
+            resizable: false,
+            alwaysOnTop: true,
+            skipTaskbar: true,
+            parent: senderWin,
+            modal: true,
+            webPreferences: {
+              nodeIntegration: true,
+              contextIsolation: false,
+            },
+          });
+          renameWin.loadFile(path.join(__dirname, "rename-prompt.html"));
+          renameWin.webContents.on("did-finish-load", () => {
+            const currentLabel = sessionEntry && sessionEntry.customLabel
+              ? sessionEntry.customLabel
+              : (sessionEntry && sessionEntry.cwd ? path.basename(sessionEntry.cwd) : "");
+            renameWin.webContents.send("set-current-name", currentLabel);
+          });
+          ipcMain.once("rename-result", (_, newName) => {
+            if (newName && sessionEntry) {
+              sessionEntry.customLabel = newName;
+              if (sessionEntry.win && !sessionEntry.win.isDestroyed()) {
+                sessionEntry.win.webContents.send("session-label", newName);
+              }
+            }
+            if (!renameWin.isDestroyed()) renameWin.close();
+          });
+        },
+      },
+      { type: "separator" },
+      {
+        label: "Close",
+        click: () => {
+          if (sessionId) _windowManager.destroySessionWindow(sessionId);
+        },
+      },
+    ]);
+    menu.popup({ window: senderWin });
+  });
+
   ipcMain.on("pause-cursor-polling", () => { idlePaused = true; });
   ipcMain.on("resume-from-reaction", () => {
     idlePaused = false;

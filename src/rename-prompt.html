@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline';">
+  <title>Rename Session</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, "Segoe UI", sans-serif;
+      font-size: 14px;
+      background: #1e1e2e;
+      color: #cdd6f4;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    label { font-weight: 600; }
+    input {
+      width: 100%;
+      padding: 8px 10px;
+      border: 1px solid #585b70;
+      border-radius: 6px;
+      background: #313244;
+      color: #cdd6f4;
+      font-size: 14px;
+      outline: none;
+    }
+    input:focus { border-color: #89b4fa; }
+    .buttons {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+    }
+    button {
+      padding: 6px 16px;
+      border: none;
+      border-radius: 6px;
+      font-size: 13px;
+      cursor: pointer;
+    }
+    button.cancel {
+      background: #45475a;
+      color: #cdd6f4;
+    }
+    button.ok {
+      background: #89b4fa;
+      color: #1e1e2e;
+      font-weight: 600;
+    }
+    button:hover { opacity: 0.85; }
+  </style>
+</head>
+<body>
+  <label>Session Name</label>
+  <input id="name-input" type="text" autofocus>
+  <div class="buttons">
+    <button class="cancel" id="btn-cancel">Cancel</button>
+    <button class="ok" id="btn-ok">OK</button>
+  </div>
+  <script src="rename-prompt-renderer.js"></script>
+</body>
+</html>

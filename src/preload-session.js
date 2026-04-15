@@ -26,4 +26,6 @@ contextBridge.exposeInMainWorld("electronAPI", {
   moveWindowBy: (dx, dy) => ipcRenderer.send("session-move-window-by", dx, dy),
   // Session label
   onSessionLabel: (cb) => ipcRenderer.on("session-label", (_, label) => cb(label)),
+  // Right-click context menu
+  showContextMenu: () => ipcRenderer.send("session-context-menu"),
 });
