@@ -8,6 +8,7 @@ const path = require("path");
 const MAX_SESSION_WINDOWS = 5;
 const STALE_CHECK_INTERVAL = 10000; // 10s
 const SESSION_STALE_MS = 600000;    // 10min — same as state.js
+const ONESHOT_STATES = new Set(["attention", "error", "sweeping", "notification", "carrying"]);
 
 const isLinux = process.platform === "linux";
 const isMac = process.platform === "darwin";
@@ -168,6 +169,19 @@ module.exports = function initWindowManager(ctx) {
       const svg = stateSvgs ? stateSvgs[Math.floor(Math.random() * stateSvgs.length)] : null;
       entry.currentSvg = svg;
       entry.win.webContents.send("state-change", state, svg);
+
+      // Oneshot states auto-return to idle after a delay
+      if (ONESHOT_STATES.has(state)) {
+        if (entry.autoReturnTimer) clearTimeout(entry.autoReturnTimer);
+        entry.autoReturnTimer = setTimeout(() => {
+          if (!entry.win || entry.win.isDestroyed()) return;
+          const idleSvgs = svgs.idle;
+          const idleSvg = idleSvgs ? idleSvgs[Math.floor(Math.random() * idleSvgs.length)] : null;
+          entry.currentState = "idle";
+          entry.currentSvg = idleSvg;
+          entry.win.webContents.send("state-change", "idle", idleSvg);
+        }, 3000);
+      }
     }
   }
 
