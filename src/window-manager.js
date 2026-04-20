@@ -122,12 +122,12 @@ module.exports = function initWindowManager(ctx) {
     console.log(`Clawd: destroyed session window [${sessionId}] (remaining: ${sessionWindows.size})`);
   }
 
-  function updateSessionState(sessionId, state, event, agentId, cwd, isHeadless) {
-    console.log(`Clawd WM: updateSessionState sid=${sessionId} state=${state} event=${event}${isHeadless ? " [headless]" : ""}`);
-    // Skip desktop pet creation for headless sessions (claude -p / --print,
-    // e.g. claude-mem observer). If a window was already spawned before the
-    // -p flag was detected, destroy it now.
-    if (isHeadless === true) {
+  function updateSessionState(sessionId, state, event, agentId, cwd, skipWindow) {
+    console.log(`Clawd WM: updateSessionState sid=${sessionId} state=${state} event=${event}${skipWindow ? " [skip]" : ""}`);
+    // Skip desktop pet creation for background agents (headless runs, the
+    // claude-mem observer, etc.). If a window was already spawned before the
+    // marker was detected, destroy it now.
+    if (skipWindow === true) {
       const existing = sessionWindows.get(sessionId);
       if (existing) destroySessionWindow(sessionId);
       return;

@@ -241,14 +241,16 @@ function startHttpServer() {
             } else {
               ctx.updateSession(sid, state, event, source_pid, cwd, editor, pidChain, agentPid, agentId, host, headless, display_svg);
               // Route to per-session window (if window-manager is available).
-              // Skip headless sessions (claude -p / --print, e.g. claude-mem
-              // observer) so background workers don't spawn desktop pets.
-              // Look up the stored session too — first hook may not yet know
-              // the -p flag if agent_pid resolves late.
+              // Skip background agents so they don't spawn desktop pets:
+              //   - Headless runs (claude -p / --print, CI scripts, etc.)
+              //   - claude-mem observer sessions (cwd under observer-sessions/)
               if (ctx.windowManager && sid !== "default") {
                 const stored = ctx.sessions && ctx.sessions.get(sid);
                 const isHeadless = headless === true || (stored && stored.headless === true);
-                ctx.windowManager.updateSessionState(sid, state, event, agentId, cwd, isHeadless);
+                const effectiveCwd = cwd || (stored && stored.cwd) || "";
+                const isObserver = /[\\/]\.claude-mem[\\/]observer-sessions(?:[\\/]|$)/.test(effectiveCwd);
+                const skipWindow = isHeadless || isObserver;
+                ctx.windowManager.updateSessionState(sid, state, event, agentId, cwd, skipWindow);
               }
             }
             res.writeHead(200, { [CLAWD_SERVER_HEADER]: CLAWD_SERVER_ID });
