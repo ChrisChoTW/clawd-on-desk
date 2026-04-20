@@ -30,6 +30,32 @@ function shouldBypassOpencodeBubble(ctx) {
   return !ctx.isAgentPermissionsEnabled("opencode");
 }
 
+// ── Background-session skip list ──
+// Sessions whose cwd contains any of these substrings never get a desktop
+// pet. Observer/daemon/worker agents use well-known subdirectory names, so
+// substring match keeps the check portable across install locations
+// (e.g. CLAUDE_MEM_DATA_DIR override relocates claude-mem but keeps the
+// `observer-sessions` directory name).
+//
+// Override or extend at launch with CLAWD_SKIP_CWDS (colon-separated).
+const DEFAULT_SKIP_CWDS = [
+  "observer-sessions",  // claude-mem observer
+];
+const SKIP_CWDS = (function () {
+  const envVal = typeof process.env.CLAWD_SKIP_CWDS === "string" ? process.env.CLAWD_SKIP_CWDS.trim() : "";
+  if (!envVal) return DEFAULT_SKIP_CWDS.slice();
+  // env wins entirely — empty env → defaults; non-empty → explicit list only
+  return envVal.split(":").map((s) => s.trim()).filter(Boolean);
+})();
+
+function isCwdOnSkipList(cwd) {
+  if (!cwd || typeof cwd !== "string") return false;
+  for (const pat of SKIP_CWDS) {
+    if (cwd.includes(pat)) return true;
+  }
+  return false;
+}
+
 module.exports = function initServer(ctx) {
 
 let httpServer = null;
@@ -243,13 +269,15 @@ function startHttpServer() {
               // Route to per-session window (if window-manager is available).
               // Skip background agents so they don't spawn desktop pets:
               //   - Headless runs (claude -p / --print, CI scripts, etc.)
-              //   - claude-mem observer sessions (cwd under observer-sessions/)
+              //   - Sessions whose cwd matches a pattern on the skip list
+              //     (defaults catch claude-mem's observer sessions; extra
+              //     patterns can be added via CLAWD_SKIP_CWDS).
               if (ctx.windowManager && sid !== "default") {
                 const stored = ctx.sessions && ctx.sessions.get(sid);
                 const isHeadless = headless === true || (stored && stored.headless === true);
                 const effectiveCwd = cwd || (stored && stored.cwd) || "";
-                const isObserver = /[\\/]\.claude-mem[\\/]observer-sessions(?:[\\/]|$)/.test(effectiveCwd);
-                const skipWindow = isHeadless || isObserver;
+                const isBackground = isCwdOnSkipList(effectiveCwd);
+                const skipWindow = isHeadless || isBackground;
                 ctx.windowManager.updateSessionState(sid, state, event, agentId, cwd, skipWindow);
               }
             }
