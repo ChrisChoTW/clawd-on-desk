@@ -5,6 +5,7 @@ const { applyStationaryCollectionBehavior } = require("./mac-window");
 const hitGeometry = require("./hit-geometry");
 const { findNearestWorkArea, computeLooseClamp, SYNTHETIC_WORK_AREA } = require("./work-area");
 const { getLaunchSizingWorkArea, getProportionalPixelSize } = require("./size-utils");
+const tmuxJump = require("./tmux-jump");
 
 // ── Autoplay policy: allow sound playback without user gesture ──
 // MUST be set before any BrowserWindow is created (before app.whenReady)
@@ -1276,6 +1277,25 @@ function createWindow() {
     senderWin.setBounds({ x: x + dx, y: y + dy, width, height });
     // Reposition permission bubbles to follow the session window
     repositionBubbles();
+  });
+
+  // Per-session window double-click → jump to this session's tmux pane
+  ipcMain.on("session-jump-to-pane", (event) => {
+    const senderWin = BrowserWindow.fromWebContents(event.sender);
+    if (!senderWin || senderWin.isDestroyed()) return;
+
+    let sessionId = null;
+    for (const [sid, sw] of _windowManager.getAll()) {
+      if (sw.win === senderWin) { sessionId = sid; break; }
+    }
+    if (!sessionId) return;
+
+    const s = sessions.get(sessionId);
+    if (!s) return;
+
+    const target = tmuxJump.findTmuxPaneForPid(s.agentPid || s.sourcePid, s.pidChain);
+    if (target) tmuxJump.jumpToPane(target);
+    if (s.sourcePid) focusTerminalWindow(s.sourcePid, s.cwd, s.editor, s.pidChain);
   });
 
   // Per-session window right-click context menu

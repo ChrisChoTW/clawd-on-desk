@@ -28,4 +28,6 @@ contextBridge.exposeInMainWorld("electronAPI", {
   onSessionLabel: (cb) => ipcRenderer.on("session-label", (_, label) => cb(label)),
   // Right-click context menu
   showContextMenu: () => ipcRenderer.send("session-context-menu"),
+  // Double-click to jump to this session's tmux pane
+  jumpToPane: () => ipcRenderer.send("session-jump-to-pane"),
 });
